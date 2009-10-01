@@ -1,17 +1,19 @@
 #!/usr/bin/ruby -w
 
+require 'set'
 require 'yaml'
 require 'optparse'
 
 opt = {}
 opts = OptionParser.new do |op|
   op.banner = "usage: #{File.basename(__FILE__)} <precision_file>.yml ..."
-  op.separator "outputs yaml formatted information:"
+  op.separator "outputs information collected by combining hits from files:"
   op.separator "---"
-  op.separator "filename: <pathgiven>"
-  op.separator "num unique aaseqs: <Int>"
-  op.separator "num unique aaseqs+charge: <Int>"
-  op.separator "num peptide hits: <Int>"
+  op.separator "filenames: "
+  op.separator "- <pathgiven>"
+  op.separator "num_unique_aaseqs: <Int>"
+  op.separator "num_unique_aaseqs_charge: <Int>"
+  op.separator "num_peptide_hits: <Int>"
   op.separator ""
   op.separator "NOTE: if a precision cutoff is given, all hits that have a better"
   op.separator "score than the worst score at the cutoff are included, even if "
@@ -30,50 +32,41 @@ if ARGV.size == 0
   exit
 end
 
+unique_sequences = Set.new
+unique_ions = Set.new
+all_hits = []
+
 ARGV.each do |file|
   hash = YAML.load_file(file)
 
   prec_index = hash['headers'].index('precision')
   mowse_index = hash['headers'].index('mowse')
+  aaseq_index = hash['headers'].index('aaseq')
+  charge_index = hash['headers'].index('charge')
 
-  hits = hash['data']
-  low_to_hi_by_mowse = hits.sort_by {|v| v[mowse_index] }
-
-  prec_cutoff_index = nil
-  low_to_hi_by_mowse.each_with_index do |hit,i|
-    if hit[prec_index] >= opt[:cutoff]
-      prec_cutoff_index = i
-      break
-    end
-  end
-
-  above_cutoff = low_to_hi_by_mowse[prec_cutoff_index..-1].reverse
-
-  unique_sequences = Set.new
-  unique_ions = Set.new
-  above.each do |ar|
-    sequence = ar[1].sequence
-    seq_plus_charge = sequence + ar.last
+  above_cutoff.each do |ar|
+    sequence = ar[aaseq_index]
+    seq_plus_charge = sequence + ar[charge_index]
     unique_sequences.add sequence
     unique_ions.add  seq_plus_charge
   end
-
-  puts "at a #{precision_cutoff} precision (#{(1.0-precision_cutoff)*100} % FDR): "
-  puts "  num psms: #{above.size}"
-  puts "  num unique seqs: #{unique_sequences.size}"
-  puts "  num unique ions: #{unique_ions.size}"
-
-
-
-  File.open(seqfile_full, 'w') do |out|
-    out.print "# target files: "
-    out.puts target_files.join(',')
-
-  out.print "# decoy files: "
-  out.puts decoy_files.join(',')
-
-  unique_sequences.to_a.sort.each do |seq|
-    out.puts seq
-  end
 end
-puts "wrote sequences to: #{seqfile_full}"
+
+prec_k = 'precision cutoff'
+fn_k = 'filenames'
+uniq_aaseq_k = 'num unique aaseqs'
+uniq_ions_k = 'num unique aaseqs+charge'
+num_hits_k = 'num peptide hits'
+
+order = [fn_k, prec_k, num_hits_k, uniq_ions_k, uniq_aaseq_k]
+
+results = {}
+results[fn_k] = '[' + ARGV.join(", ") + ']'
+results[prec_k] = opt[:cutoff]
+results[uniq_aaseq_k] = unique_sequences.size
+results[uniq_ions_k] = unique_ions.size
+results[num_hits_k] = all_hits.size
+
+order.each do |key|
+  puts "#{key}: #{results[key]}"
+end
