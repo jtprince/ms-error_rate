@@ -9,42 +9,40 @@ require 'ms/fasta/ipi'
 SET_RE = /Set\s+(.*)/i
 PRECISION_EXT = ".precision.yml"
 
+
+# returns [sets_to_paths_hash, sets_order]
 def sets_compare_to_paths(file, ext=PRECISION_EXT)
   dirname = File.dirname(File.expand_path(file))
   lines = IO.readlines(file).map {|v| v.chomp }.select {|v| v =~ /\w/}
   sets = {}
   current_set = nil
+  sets_order = []
   lines.each do |line|
     if line =~ SET_RE
       current_set = $1.dup
       sets[current_set] = [] 
+      sets_order << current_set
     else
       full_path = (File.join(dirname,(line + ext)))
       raise RuntimeError, "file #{full_path} does not exist!!" unless File.exist?(full_path)
       sets[current_set] << full_path
     end
   end
-  sets
+  [sets, sets_order]
 end
 
 # returns those above the precision cutoff and those below
 # requires a block for sorting the hits
-def cut_by_precision(hits, mowse_index, prec_index, cutoff, &block)
-  ###############################################
-  ###############################################
-  ###############################################
-  ###############################################
-  ###############################################
-  # WORKING HERE
-  ###############################################
-  ###############################################
-  ###############################################
-  ###############################################
+# is not sensitive to early fluctuations in precision calcultion (i.e., finds
+# the most number with the last hit above the precision)
+# hits must each respond to :precision
+def cut_by_precision(hits, precision_cutoff, &block)
+
   low_to_hi_by_mowse = hits.sort_by &block
 
   found_lowest_above = false
   low_to_hi_by_mowse.partition do |hit|
-    if ((!found_lowest_above) && (hit[prec_index] >= cutoff))
+    if ((!found_lowest_above) && (hit.precision >= precision_cutoff))
       found_lowest_above = true
     end
     found_lowest_above
@@ -74,9 +72,10 @@ def minimal_protein_set(proteins_to_aaseqs)
 
   found_seq = Set.new
 
-  same_peptide_hits = Hash.new{|h,k| h[k] = [] }
+  same_peptide_hits = {}
 
   last_peps = nil
+  last_uniq_prot = nil
   sorted_most_to_least.each do |prot, peps|
     sorted_peps = peps.sort # is it necessary to SORT?????????
     uniq_peps = peps.select do |pep|
@@ -89,10 +88,12 @@ def minimal_protein_set(proteins_to_aaseqs)
     end
     if uniq_peps.size > 0
       proteins_and_uniq_peps << [prot, uniq_peps]
+      same_peptide_hits[prot] = []
       last_peps = sorted_peps
+      last_uniq_prot = prot
     else
       if sorted_peps == last_peps 
-        same_peptide_hits[proteins_and_uniq_peps.last.first] << prot
+        same_peptide_hits[last_uniq_prot] << prot
       end
     end
   end
@@ -116,11 +117,11 @@ def cutoffs_to_floats(ar, fdr=false)
 end
 
 # returns a hash keyed on protein id that yields an array:
-#   [#total hits, #aaseq+charge, #aaseq]
+#   [#aaseq, #aaseq_and_charge, #total_hits]
 def stats_per_prot(prot_to_peps, seq_to_hits)
   per_protein_hash = {}
-  prots_to_peps.each do |prot, uniq_pep_seqs|
-    all_hits = Set.new
+  prot_to_peps.each do |prot, uniq_pep_seqs|
+    all = Set.new
     aaseqcharges = Set.new
     aaseqs = Set.new
 
@@ -132,9 +133,11 @@ def stats_per_prot(prot_to_peps, seq_to_hits)
         aaseqs.add( aaseq )
         aaseqcharges.add( aaseq + hit.charge )
       end
-      per_protein_hash[prot] = [all_hits.size, aaseqcharges.size, aaseqs.size]
+      per_protein_hash[prot] = [aaseqs.size, aaseqcharges.size, all.size]
+
     end
-    per_protein_hash
+  end
+  per_protein_hash
 end
 
 opt = {
@@ -173,6 +176,7 @@ opts = OptionParser.new do |op|
   op.separator ""
   op.on("--proteins <fasta>,<pep-db>", Array, "path to fasta and peptide centric DB", "peptide_centric_db is in the format: ", "<PEPTIDE>: <ID>-<ID>-<ID>") {|v| opt[:proteins] = v }
   op.on("--print-proteins", "gives an array of proteins") {|v| opt[:proteins] = v }
+  op.on("--scheme", "prints the skeleton yaml scheme and exits") {|v| opt[:scheme] = v }
 end
 
 # later on we could implement full isoform resolution like IsoformResolver
@@ -183,6 +187,48 @@ end
 # protein groups.
 
 opts.parse!
+
+if opt[:scheme]
+  yaml = <<SKEL
+results: 
+- precision_cutoff: <Float>
+  sets: 
+    <set_name>: 
+      num_uniq_aaseqs: <Integer>
+      num_aaseqs_not_in_pep_db: <Integer>
+      num_uniq_aaseqs_charge: <Integer>
+      proteins: 
+        <IPI_ID>: 
+          num_hits_all: 
+          - <Integer> # total num aaseqs
+          - <Integer> # total num aaseq+charge
+          - <Integer> # total num hits
+          num_hits_minimal: 
+          - <Integer> # total num aaseqs
+          - <Integer> # total num aaseq+charge
+          - <Integer> # total num hits
+          indistinguishable: 
+          - <IPI_ID>
+          - <IPI_ID>
+          aaseqs: 
+          - <String>
+          - <String>
+sets_order:
+- <String>
+- <String>
+protein_info: 
+  <IPI_ID>: 
+    Gene_Symbol: <String>
+    IPI: <IPI_ID>
+    Tax_Id: <String>
+    SWISS-PROT: <String>
+    description: <String>
+    ENSEMBL: <String>
+SKEL
+  print yaml
+
+  exit
+end
 
 if ARGV.size != 1
   puts opts.to_s
@@ -196,7 +242,8 @@ protein_info = {}
 results['protein_info'] = protein_info
 results['results'] = []
 
-sets_hash = sets_compare_to_paths(ARGV.shift)
+(sets_hash, sets_order) = sets_compare_to_paths(ARGV.shift)
+results['sets_order'] = sets_order
 
 if opt[:proteins]
   (fasta, pep_db_file) = opt[:proteins]
@@ -228,15 +275,19 @@ end
 opt[:cutoffs].each do |cutoff|
 
   #results.reject {|hash| hash[:precision_cutoff] == cutoff } # clear out older results
-  cutoff_results = {'precision_cutoff' => cutoff }
+  
+  cutoff_results = {'precision_cutoff' => cutoff}
+  results_sets_hash = {}
+  cutoff_results['sets'] = results_sets_hash
   results['results'] << cutoff_results
 
   #########################
   # FOR EACH SET:
   #########################
+  pep_klass = nil
   sets_hash.each do |set, files|
     set_results = {}
-    cutoff_results[set] = set_results
+    results_sets_hash[set] = set_results
 
     # assumes the indices are the same into each data file
 
@@ -245,45 +296,32 @@ opt[:cutoffs].each do |cutoff|
       hash = YAML.load_file(file)
 
       header_hash = hash['headers']
-      Pep = Struct.new(*(header_hash.map {|v| v.to_sym }))
+      pep_klass ||= Struct.new(*(header_hash.map {|v| v.to_sym }))
+      hits = hash['data'].map {|v| pep_klass.new(*v) }
+
       passing_hits = 
         if cutoff
-          (above, below) = cut_by_precision(hash['data'], mowse_index, prec_index, cutoff)
+          (above, below) = cut_by_precision(hits, cutoff) {|v| v.mowse }
           above
         else
-          hash['data']
+          hits
         end
       all_passing_hits.push(*passing_hits)
     end
+
 
     
     # create an index from aaseq to hits
     seq_to_hits = Hash.new {|h,k| h[k] = []}
     uniq_seqcharge = Set.new
     all_passing_hits.each do |hit|
-      seq_to_hits[hit[aaseq_index]] << hit
-      uniq_seqcharge.add( hit[aaseq_index] + hit[charge_index] )
+      seq_to_hits[hit.aaseq] << hit
+      uniq_seqcharge.add( hit.aaseq + hit.charge )
     end
+
 
     # determine the number of uniq aaseqs
     uniq_seqs = seq_to_hits.size
-
-    ## THIS METHOD is probably faster, but much longer than just making the
-    ## Set above.
-    ##
-    # determine the number of uniq aaseq+charge 
-    #num_uniq_seqcharges = seq_to_hits.inject(0) do |sum, pair|
-    #  (seq, hits) = pair
-    #  set = Set.new
-    #  initial = hits.first[charge_index]
-    #  hits.each do |hit|
-    #    charge = hit[charge_index]
-    #    puts "FOUND ONE!!!!!!" if charge != initial
-    #    set.add hit[charge_index]
-    #    initial = charge
-    #  end
-    #  sum + set.size
-    #end
 
     num_uniq_seqcharges = uniq_seqcharge.size
 
@@ -308,7 +346,7 @@ opt[:cutoffs].each do |cutoff|
       end
 
       # Determine the number of 1) hits, 2) aaseqs, 3) aaseqcharges per protein BEFORE minimization
-
+      stats_per_protein_before = stats_per_prot(prots_to_peps, seq_to_hits)
 
       # get the minimal protein set
       (prot_to_uniq_peps_hash, indistinguishable_protein_hash) = minimal_protein_set(prots_to_peps) do |prot,peps|
@@ -322,18 +360,21 @@ opt[:cutoffs].each do |cutoff|
         end
       end
 
-      # some proteins in the file are reported as having an empty set of indistinguishable
-      # proteins and I'm not sure why... delete them here..
-      to_delete = []
-      indistinguishable_protein_hash.each do |k,v|
-        if v == []
-          to_delete << k
-        end
-      end
-      to_delete.each do |del| indistinguishable_protein_hash.delete(del) end
+      stats_per_protein_minimal = stats_per_prot(prot_to_uniq_peps_hash, seq_to_hits)
 
-      set_results['indistinguishable_proteins'] = indistinguishable_protein_hash
-      set_results['proteins'] = prot_to_uniq_peps_hash
+      # create a hash of data for each protein
+      protein_data_hashes_hash = {}
+      prot_to_uniq_peps_hash.each do |prot, peps|
+        protein_data_hashes_hash[prot] = { 
+            'aaseqs' => peps,
+            # this will be a triplet 
+            'num_hits_minimal' => stats_per_protein_minimal[prot],
+            'indistinguishable' => indistinguishable_protein_hash[prot],
+            'num_hits_all' => stats_per_protein_before[prot],
+        } 
+      end
+
+      set_results['proteins'] = protein_data_hashes_hash
       set_results['num proteins'] = prot_to_uniq_peps_hash.size
       set_results['num_aaseqs_not_in_pep_db'] = peptides_not_found.size
     end
