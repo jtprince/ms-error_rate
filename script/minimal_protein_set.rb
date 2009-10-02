@@ -325,7 +325,7 @@ opt[:cutoffs].each do |cutoff|
 
     num_uniq_seqcharges = uniq_seqcharge.size
 
-    set_results.merge!( { 'num peptide hits' => all_passing_hits.size,
+    set_results.merge!( { 'num_peptide_hits' => all_passing_hits.size,
       'num_uniq_aaseqs' => uniq_seqs,
       'num_uniq_aaseqs_charge' => num_uniq_seqcharges,
     })
@@ -375,7 +375,7 @@ opt[:cutoffs].each do |cutoff|
       end
 
       set_results['proteins'] = protein_data_hashes_hash
-      set_results['num proteins'] = prot_to_uniq_peps_hash.size
+      set_results['num_proteins'] = prot_to_uniq_peps_hash.size
       set_results['num_aaseqs_not_in_pep_db'] = peptides_not_found.size
     end
   end
