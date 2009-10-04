@@ -1,0 +1,88 @@
+#!/usr/bin/ruby
+
+require 'support/sort_by_attributes'
+require 'ms/error_rate'
+require 'optparse'
+
+@num_tp_validators = 0
+@num_fp_validators = 0
+
+
+arg_strings_ar = [true,false].map do |boolean|
+["a false positive indicator", "A = aaseq to indictor (0-1) yml file", "B = aaseq_length to frequency yml file", "C = rate indicators are #{boolean} pos.", "D = name of the validator"]
+end
+
+op_sbv_ars = [true,false].zip(arg_strings_ar).map do |boolean, arg_strings|
+  letter = boolean ? 't' : 'f'
+  ["--#{letter}p-sbv <A,B,C[,D]>,", Array, *arg_strings]
+end
+
+raw_validator_args = []
+validator_names = []
+
+opts = OptionParser.new do |op|
+  op.banner = "usage: #{File.basename(__FILE__)} precision.yml ..."
+
+  op.on("--order-by <Array>", Array, "the keys to order on") {|v| opt[:order_by] = v.map {|v| v.to_sym } }
+  op.on("--best-is-low <Array>", Array, "the keys where better score is lower") {|v| opt[:best_is_low] = v.map {|v| v.to_sym } }
+
+  [true, false].each do |boolean|
+    index = boolean ? 0 : 1
+    op.on(*op_sbv_ars[index]) do |v| 
+      (a,b,c,d) = v
+      name = 
+        if d 
+          d
+        else
+          if boolean 
+            @num_tp_validator += 1
+            "tp#{@num_tp_validator}" 
+          else
+            @num_fp_validator += 1
+            "fp#{@num_fp_validators}"
+          end
+        end
+      validator_names << name
+      raw_validator_args << [a,b,c]
+    end
+  end
+end
+
+opts.parse!
+
+
+if ARGV.size != 1
+  puts opts.to_s
+  exit
+elsif !opt[:order_by]
+  puts "you must specify the order-by array!"
+  exit
+end
+
+sort_args = opt[:order_by]
+sort_args << {:down => opt[:best_is_low] } # because we will sort normal and reverse the array
+
+
+# load one validator at a time
+
+raw_validator_args.zip(validator_names) do |args, name|
+  (a,b,c) = args 
+  val = Ms::ErrorRate::Sbv.new(YAML.load_file(a), YAML.load_file(b), c)
+
+  ARGV.each do |file|
+    yaml = YAML.load_file(file)
+    pepclass = Struct.new(yaml['headers'].map {|v| v.to_sym })
+    peps = yaml['data'].each do |ar|
+      pepclass.new(*ar) 
+    end
+    sorted_best_to_worst = peps.sort_by_attributes(sort_args)
+
+    precision_vals = sorted_best_to_worst.map do |pep|
+      val.update_precision(pep.aaseq)
+    end
+
+  end
+  p precision_vals
+end
+
+
