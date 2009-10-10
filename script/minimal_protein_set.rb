@@ -128,37 +128,20 @@ opt = {
 }
 
 opts = OptionParser.new do |op|
-  op.banner = "usage: #{File.basename(__FILE__)} sets_compare.txt"
-  op.separator "expects a sets_compare file in the format:"
+  op.banner = "USAGE: #{File.basename(__FILE__)} sets_compare.txt"
+  op.separator "OUTPUT: #{opt[:outfile]}"
   op.separator ""
-  op.separator "Set <whatever>"
-  op.separator "filename1_no_ext"
-  op.separator "filename2_no_ext"
-  op.separator "Set <whatever2>"
-  op.separator "..."
+  op.separator "INPUT: "
+  op.separator "    each <file> referenced in sets_compare.txt should have a"
+  op.separator "    <file>.precision.yml file"
   op.separator ""
-  op.separator "appends to #{opt[:outfile]}, but will overwrite sections if the same precision_cutoff:"
-
-  op.separator "- precision_cutoff: <float or nil>"
-  op.separator "  num_unique_aaseqs: <int>"
-  op.separator "  num_uniqe_aaseqs_charge: <int>"
-  op.separator "  num_hits: <int>"
-  op.separator ""
-  op.separator "other information "
-  op.separator "each file should already have a <file>.precision.yml file"
-  op.separator ""
-  op.on("-p", "--precision <0-1[,...]>", Array, "precision cutoff(s)") {|v| opt[:cutoffs] = cutoffs_to_floats(v)}
-  op.on("-f", "--fdr <0-1[,...]>", Array, "false discovery rate cutoff (1-precision)") {|v| opt[:cutoffs] == cutoffs_to_floats(v, true) }
-  op.separator ""
-  op.separator "NOTE: if a precision cutoff is given, all hits that have a better"
-  op.separator "score than the worst score at the cutoff are included, even if "
-  op.separator "the precision for that hit was below the cutoff"
-  op.separator "this prevents early, local aberrations in precision from messing"
-  op.separator "up the analysis"
+  op.separator "OPTIONS:"
+  op.on("-p", "--precision <0-1[,...]>", Array, "precision cutoff(s) ['-' for none]") {|v| opt[:cutoffs] = cutoffs_to_floats(v)}
   op.separator ""
   op.on("--proteins <fasta>,<pep-db>", Array, "path to fasta and peptide centric DB", "peptide_centric_db is in the format: ", "<PEPTIDE>: <ID>-<ID>-<ID>") {|v| opt[:proteins] = v }
-  op.on("--print-proteins", "gives an array of proteins") {|v| opt[:proteins] = v }
-  op.on("--scheme", "prints the skeleton yaml scheme and exits") {|v| opt[:scheme] = v }
+  op.separator "FORMATS:"
+  op.on("--output-format", "prints the output yaml scheme and exits") {|v| opt[:output_format] = v }
+  op.on("--input-format", "prints sets_compare.txt format and exits") {|v| opt[:input_format] = v }
 end
 
 # later on we could implement full isoform resolution like IsoformResolver
@@ -170,7 +153,7 @@ end
 
 opts.parse!
 
-if opt[:scheme]
+if opt[:output_format]
   yaml = <<SKEL
 results: 
 - precision_cutoff: <Float>
@@ -208,7 +191,22 @@ protein_info:
     ENSEMBL: <String>
 SKEL
   print yaml
+  exit
+end
 
+if opt[:input_format]
+  string =<<EXPLANATION
+# the sets_compare.yml format is very simple:
+
+Set <some_name_for_set1>
+filename1_no_ext
+filename2_no_ext
+Set <some_name_for_set2>
+filename3_no_ext
+filename4_no_ext
+...
+EXPLANATION
+  puts string
   exit
 end
 
@@ -360,7 +358,7 @@ opt[:cutoffs].each do |cutoff|
       set_results['num_proteins'] = prot_to_uniq_peps_hash.size
       set_results['num_aaseqs_not_in_pep_db'] = peptides_not_found.size
       if peptides_not_found.size > 0
-        puts "Did not find in db: #{peptides_not_found.join(', ')}"
+        warn "Did not find in peptide centric db: #{peptides_not_found.join(', ')}"
       end
     end
   end
