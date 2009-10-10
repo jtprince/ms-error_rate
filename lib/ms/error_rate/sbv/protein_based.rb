@@ -10,6 +10,7 @@ module Ms
         # hyphen.  returns the names of the files written
         def self.generate_hashes(pep_to_prot_file, protid_to_val, options={})
           options[:protein_hash] = protid_to_val
+          options[:type_code] = 'tm' unless options[:type_code]
           files = Ms::ErrorRate::Sbv.generate_hashes(pep_to_prot_file, options) do |prot_return_vals|
             
             total_with_bias = 0 

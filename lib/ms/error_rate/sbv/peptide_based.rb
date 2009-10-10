@@ -8,7 +8,7 @@ module Ms
       class PeptideBased
 
         def self.generate_hashes(pep_to_prot_file, aa="C", min_num=1 )
-          Ms::ErrorRate::Sbv.generate_hashes(pep_to_prot_file, :type_code => "#{TWO_LETTER}_min#{min_num}") do |pep|
+          Ms::ErrorRate::Sbv.generate_hashes(pep_to_prot_file, :type_code => "aa_min#{min_num}") do |pep|
             if min_num == 1
               if pep.include?(aa) ; 1
               else ; 0
