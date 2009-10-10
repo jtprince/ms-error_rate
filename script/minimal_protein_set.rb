@@ -31,24 +31,6 @@ def sets_compare_to_paths(file, ext=PRECISION_EXT)
   [sets, sets_order]
 end
 
-# returns those above the precision cutoff and those below
-# requires a block for sorting the hits
-# is not sensitive to early fluctuations in precision calcultion (i.e., finds
-# the most number with the last hit above the precision)
-# hits must each respond to :precision
-def cut_by_precision(hits, precision_cutoff, &block)
-
-  low_to_hi_by_mowse = hits.sort_by &block
-
-  found_lowest_above = false
-  low_to_hi_by_mowse.partition do |hit|
-    if ((!found_lowest_above) && (hit.precision >= precision_cutoff))
-      found_lowest_above = true
-    end
-    found_lowest_above
-  end
-end
-
 # returns [minimal_protein_to_uniq_peps_hash, indistinguishable_protein_hash] 
 # takes a hash of proteins to aaseqs. Uses a greedy algorithm where
 # things are sorted first by the number of uniq amino acid sequences and total
@@ -269,7 +251,6 @@ if opt[:proteins]
   pep_db = YAML.load_file(pep_db_file)
   STDERR.puts "#{Time.now - start} seconds."
 
-
 end
 
 opt[:cutoffs].each do |cutoff|
@@ -301,7 +282,8 @@ opt[:cutoffs].each do |cutoff|
 
       passing_hits = 
         if cutoff
-          (above, below) = cut_by_precision(hits, cutoff) {|v| v.mowse }
+          # assumes monotonic precision values!
+          (above, below) = hits.partition {|hit| hit.precision >= cutoff }
           above
         else
           hits
@@ -377,6 +359,9 @@ opt[:cutoffs].each do |cutoff|
       set_results['proteins'] = protein_data_hashes_hash
       set_results['num_proteins'] = prot_to_uniq_peps_hash.size
       set_results['num_aaseqs_not_in_pep_db'] = peptides_not_found.size
+      if peptides_not_found.size > 0
+        puts "Did not find in db: #{peptides_not_found.join(', ')}"
+      end
     end
   end
 end

@@ -7,7 +7,7 @@ module Ms
     IPI_RE = /IPI:([\w\d\.]+)\|/
     GI_RE = /gi|([\w\d\.]+)\|/
 
-    DEFAULT_PEPTIDE_CENTRIC_DB = {:missed_cleavages => 1, :min_length => 8, :enzyme => Ms::InSilico::Digester::TRYPSIN, :id_regexp => nil, :remove_digestion_file => true }
+    DEFAULT_PEPTIDE_CENTRIC_DB = {:missed_cleavages => 1, :min_length => 8, :enzyme => Ms::InSilico::Digester::TRYPSIN, :id_regexp => nil, :remove_digestion_file => true, :also_cleave_initiator_methionine => true}
 
     # writes a new file with the added 'min_aaseq<Integer>'
     # creates a temporary digestion file that contains all peptides digesting
@@ -16,7 +16,7 @@ module Ms
     def self.peptide_centric_db(fasta_file, opts={})
       opts = DEFAULT_PEPTIDE_CENTRIC_DB.merge(opts)
 
-      (missed_cleavages, min_length, enzyme, id_regexp, remove_digestion_file) = opts.values_at(:missed_cleavages, :min_length, :enzyme, :id_regexp, :remove_digestion_file) 
+      (missed_cleavages, min_length, enzyme, id_regexp, remove_digestion_file, also_cleave_initiator_methionine) = opts.values_at(:missed_cleavages, :min_length, :enzyme, :id_regexp, :remove_digestion_file, :also_cleave_initiator_methionine) 
 
       unless id_regexp
         id_regexp = Ms::Fasta.id_regexp(Ms::Fasta.filetype(fasta_file))
@@ -26,10 +26,22 @@ module Ms
       base = fasta_file.chomp(File.extname(fasta_file))
       digestion_file = base + ".msd_clvg#{missed_cleavages}.peptides"
       File.open(digestion_file, "w") do |fh|
-        peptides = []
         Ms::Fasta.open(fasta_file) do |fasta|
           fasta.each do |prot|
-            fh.puts( prot.header.split(/\s+/).first + "\t" + enzyme.digest(prot.sequence, missed_cleavages).join(" ") )
+            peptides = enzyme.digest(prot.sequence, missed_cleavages)
+            begin_peptides_TEST = peptides.map
+            if (also_cleave_initiator_methionine && (prot.sequence[0,1] == "M"))
+              m_peps = []
+              init_methionine_peps = []
+              peptides.each do |pep|
+                # if the peptide is at the beginning of the protein sequence
+                if prot.sequence[0,pep.size] == pep
+                  m_peps << pep[1..-1]
+                end
+              end
+              peptides.push(*m_peps)
+            end
+            fh.puts( prot.header.split(/\s+/).first + "\t" + peptides.join(" ") )
           end
         end
       end
