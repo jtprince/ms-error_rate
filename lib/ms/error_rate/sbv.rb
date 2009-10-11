@@ -39,7 +39,7 @@ module Ms
             total_known = 0
             answ = 
               if protein_hash
-                yield( protein_hash.values_at(prot_string.split('-')) )
+                yield( protein_hash.values_at(*(prot_string.split('-'))) )
               else
                 yield(pep)
               end
