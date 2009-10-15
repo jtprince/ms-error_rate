@@ -11,11 +11,11 @@ DIST_FILES =  LIB_FILES + EXTRA_RDOC_FILES
 
 LEAVE_OUT = %w(lib/ms/sequest/bioworks.rb lib/ms/sequest/pepxml.rb)
 
-require "lib/ms/sequest"  # to get the Version #
+require "lib/ms/error_rate/version"  # to get the Version #
 
 gemspec = Gem::Specification.new do |s|
   s.name = NAME
-  s.version = Ms::Sequest::VERSION
+  s.version = Ms::ErrorRate::Version::VERSION
   s.authors = ["John Prince"]
   s.email = "jtprince@gmail.com"
   s.homepage = "http://mspire.rubyforge.org/projects/#{NAME}/"
