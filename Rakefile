@@ -3,13 +3,11 @@ require 'rake/testtask'
 require 'rake/rdoctask'
 require 'rake/gempackagetask'
 
-NAME = 'ms-sequest'
+NAME = 'ms-error_rate'
 EXTRA_RDOC_FILES = %w(README MIT-LICENSE History)
 LIB_FILES = Dir["lib/**/*.rb"]
 
 DIST_FILES =  LIB_FILES + EXTRA_RDOC_FILES
-
-LEAVE_OUT = %w(lib/ms/sequest/bioworks.rb lib/ms/sequest/pepxml.rb)
 
 require "lib/ms/error_rate/version"  # to get the Version #
 
@@ -20,21 +18,19 @@ gemspec = Gem::Specification.new do |s|
   s.email = "jtprince@gmail.com"
   s.homepage = "http://mspire.rubyforge.org/projects/#{NAME}/"
   s.platform = Gem::Platform::RUBY
-  s.summary = "An mspire library supporting SEQUEST, Bioworks, SQT, etc"
-  s.description = "reads .SRF, .SQT and supports conversions"
+  s.summary = "An mspire library for determining error rates"
+  s.description = "decoy databases, sample bias validation, etc."
   s.require_path = "lib"
   s.rubyforge_project = "mspire"
   s.has_rdoc = true
   s.executables = Dir["bin/*"].map {|v| v.sub(/^bin\//,'') }
-  s.add_dependency("arrayclass", ">= 0.1.0")
   s.add_dependency("ms-core", ">= 0.0.1")
-  s.add_dependency("tap", ">= 0.17.1")
   s.add_dependency("ms-fasta", ">= 0.2.3")
   #s.add_dependency("tap", ">= 0.12.4")
   #s.add_dependency("tap-mechanize", ">= 0.5.1")
   #s.add_dependency("external", ">= 0.3.0")
   #s.add_dependency("ms-in_silico", ">= 0.2.3")
-  s.rdoc_options.concat %W{--main README -S -N --title Ms-Sequest}
+  s.rdoc_options.concat %W{--main README -S -N --title Ms-ErrorRate}
   
   # list extra rdoc files like README here.
   s.extra_rdoc_files = EXTRA_RDOC_FILES
@@ -103,7 +99,7 @@ task :publish_rdoc => [:rdoc] do
   host = "#{config["username"]}@rubyforge.org"
   
   rsync_args = "-v -c -r"
-  remote_dir = "/var/www/gforge-projects/mspire/projects/ms-sequest"
+  remote_dir = "/var/www/gforge-projects/mspire/projects/ms-error_rate"
   local_dir = "rdoc"
  
   sh %{rsync #{rsync_args} #{local_dir}/ #{host}:#{remote_dir}}
