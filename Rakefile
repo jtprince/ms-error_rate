@@ -11,6 +11,8 @@ DIST_FILES =  LIB_FILES + EXTRA_RDOC_FILES
 
 require "lib/ms/error_rate/version"  # to get the Version #
 
+LEAVE_OUT = []
+
 gemspec = Gem::Specification.new do |s|
   s.name = NAME
   s.version = Ms::ErrorRate::Version::VERSION
