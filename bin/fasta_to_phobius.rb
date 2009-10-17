@@ -8,7 +8,6 @@ if ARGV.size == 0
   puts "usage: #{File.basename(__FILE__)} <file>.fasta"
   puts "outputs <file>.phobius "
   puts "in short format"
-  puts "submits fasta guys in chunks of #{prot_chunk_size}"
   exit
 end
 

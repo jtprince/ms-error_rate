@@ -19,7 +19,7 @@ class Phobius::Index < Hash
     Phobius.default_index(file, self)
   end
 
-  # we need to match whatever function toppred uses to generate identifiers if
+  # we need to match whatever function phobius uses to generate identifiers if
   # we want derivative processes to be fast and accurate
   def reference_to_key(reference)
     if reference

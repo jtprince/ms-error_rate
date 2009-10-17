@@ -135,7 +135,6 @@ if ARGV.size == 0
   exit
 end
 
-
 target_files = []
 decoy_files = []
 if opt[:find_decoy]
