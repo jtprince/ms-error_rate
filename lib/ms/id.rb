@@ -23,6 +23,9 @@ module Ms
         raise RuntimeError, "fasta file type not recognized, supply id_regexp" unless id_regexp
       end
 
+      start_time = Time.now
+      print "Digesting #{fasta_file} ..." if $VERBOSE
+
       base = fasta_file.chomp(File.extname(fasta_file))
       digestion_file = base + ".msd_clvg#{missed_cleavages}.peptides"
       File.open(digestion_file, "w") do |fh|
@@ -45,6 +48,11 @@ module Ms
           end
         end
       end
+      puts "#{Time.now - start_time} sec" if $VERBOSE
+
+      
+      start_time = Time.now
+      print "Organizing raw digestion #{digestion_file} ..." if $VERBOSE
 
       hash = Hash.new {|h,k| h[k] = [] }
       IO.foreach(digestion_file) do |line|
@@ -56,12 +64,20 @@ module Ms
           end
         end
       end
+      puts "#{Time.now - start_time} sec" if $VERBOSE
+
       base = digestion_file.chomp(File.extname(digestion_file))
-      File.open(base + ".min_aaseq#{min_length}" + ".yml", 'w') do |out|
+      final_outfile = base + ".min_aaseq#{min_length}" + ".yml"
+
+      start_time = Time.now
+      print "Writing results to #{} ..." if $VERBOSE
+
+      File.open(final_outfile, 'w') do |out|
         hash.each do |k,v|
           out.puts( "#{k}: #{v.join('-')}" )
         end
       end
+      puts "#{Time.now - start_time} sec" if $VERBOSE
 
       if remove_digestion_file
         File.unlink(digestion_file)
