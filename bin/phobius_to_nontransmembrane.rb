@@ -4,10 +4,11 @@ require 'ms/fasta'
 require 'transmembrane/phobius.rb'
 
 if ARGV.size != 3
-  puts "usage: #{File.basename(__FILE__)} max_num_tm phobius_short_file <file>.fasta"
-  puts "max_num_tm = max # of transmembrane sequences allowed to be a non-transmembrane."
+  puts "usage: #{File.basename(__FILE__)} <max#tm> phobius_file_short <file>.fasta"
+  puts "max#tm = max # of transmembrane sequences allowed to be a non-transmembrane."
   puts ""
   puts "outputs: <file>_NONTM.fasta"
+  exit
 end
 
 (max_num_tm, phobius_short_file, fasta_db_file) = ARGV
