@@ -19,7 +19,6 @@ module Ms
     # For generating and working with q-value calculations.  The q-value is the global false discovery rate when accepting that particular ID.  We do not necessarily distinguish here between *how* the FDR is generated (i.e., Storey's pFDR "the occurrence of false positives" vs. Benjamini-Hochberg's FDR "the rate of false positives" [except to prefer Storey when possible] ).  The main point is that we sort and threshold based on a global FDR.
     module Qvalue
       module_function
-
          
       # returns a parallel array to target hits with qvalues
       # opts = :z_together true/false (default false) group all charges

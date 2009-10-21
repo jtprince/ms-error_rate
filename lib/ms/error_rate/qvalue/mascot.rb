@@ -1,3 +1,4 @@
+require 'ms/error_rate/qvalue'
 require 'ms/mascot/dat'
 
 module Ms
@@ -9,57 +10,46 @@ module Ms
   end
 end
 
+
 module Ms::ErrorRate::Qvalue::Mascot
-  # returns a hash of arrays of hits (each being: [filename, sequence, charge,
-  # mowse, precision]) indexed by the charge state
-  # if opts[:z_together], returns a single array
+  MEMBERS = [:filename, :query_title, :charge, :sequence, :mowse, :qvalue]
+  MascotPeptideHit = Struct.new(*MEMBERS)
+
+  module_function
+  # returns an array of Structs of PeptideHit(:filename, :query_title, :charge, :sequence, :mowse, :qvalue)
   def qvalues(target_files, decoy_files, opts={})
-    opts = {:z_together => false}.merge opts
 
-    all_hits_by_charge = Hash.new {|h,k| h[k] = [] }
-    (target_hash, decoy_hash) = [target_files, decoy_files].map do |files|
-      hash = {}
-
+    # we only want the top hit per query title (which should ensure that we
+    # get the top hit per scan)
+    (target_hits, decoy_hits) = [target_files, decoy_files].map do |files|
+      hits_by_query_title = Hash.new {|h,k| h[k] = [] }
       files.each do |file| 
-        filename = File.basename(file)
-
+        base_no_ext = File.basename(file, '.*')
         Ms::Mascot::Dat.open(file) do |dat|
-          dat.each_peptide_hit(:yield_nil => false, :with_query => true) do |hit,query|
-            hash[hit] = [filename, hit.sequence, query.data['charge'], hit.score] 
-            all_hits_by_charge[query.data['charge']] << hit
+          dat.each_peptide_hit(:by => :top, :yield_nil => false, :with_query => true) do |hit,query|
+
+            hit_as_struct = MascotPeptideHit.new(base_no_ext, query.title, query.charge, hit.sequence, hit.score)
+            hits_by_query_title[hit_as_struct.query_title] << hit_as_struct
           end
         end
       end
-      hash  # <-- need this for the map
-    end
 
-    # Proc.new doesn't do arity checking
-    hits_with_qvalues = Proc.new do |hits|
-      target_hits_as_arrays_sorted = []
-      all_sorted_by_mowse = hits.sort_by{|hit| -(hit.score)}
-      (target_hits, qvalues) = Ms::Id::Qvalue.mixed_target_decoy(all_sorted_by_mowse, target_hash)
-      target_hits.zip(qvalues) do |hit, qvalue|
-        target_hits_as_arrays_sorted.push( target_hash[hit] << qvalue)
+      final_hits = []
+      hits_by_query_title.each do |title, hits|
+        best_hit = 
+          if hits.size == 1
+            hits.first
+          else
+            hits.sort_by(&:mowse).last
+          end
+        final_hits << best_hit
       end
-      target_hits_as_arrays_sorted
+      final_hits
     end
-
-    if opts[:z_together]
-      all_hits = []
-      all_hits_by_charge.each do |charge, hits|
-        all_hits.push(*hits)
-      end
-      hits_with_qvalues.call(all_hits)
-    else
-      all_hits = []
-      all_hits_by_charge.each do |charge,hits|
-        all_hits.push(*(hits_with_qvalues.call(hits)))
-      end
-      all_hits.sort_by {|v| -(v.last) }
+    pairs = Ms::ErrorRate::Qvalue.target_decoy_qvalues(target_hits, decoy_hits, opts, &:mowse)
+    pairs.map do |hit, qval| 
+      hit.qvalue = qval 
+      hit
     end
   end
-
-  module_function :qvalue
-
-
 end
