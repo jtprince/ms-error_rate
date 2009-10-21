@@ -12,6 +12,7 @@ end unless Class.respond_to?(:xit)
 
 TESTFILES = File.expand_path(File.dirname(__FILE__)) + "/testfiles"
 
+=begin
 begin
   require 'ms/testdata'
 rescue(LoadError)
@@ -25,6 +26,7 @@ not been initialized. Use these commands and try again:
 }
   raise
 end
+=end
 
 def capture_stderr
   begin
