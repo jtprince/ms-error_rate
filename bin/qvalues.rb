@@ -4,7 +4,7 @@ require 'optparse'
 require 'ms/error_rate/qvalue'
 
 DEF_EXT = "_flip"
-NORMAL_EXT = 'qvalue.yml'
+NORMAL_EXT = 'qval.yml'
 
 def print_out(outfile, filenames, headers, target_hits)
   File.open(outfile, 'w') do |out|
@@ -14,10 +14,12 @@ end
 
 opt = {
   :outfile => NORMAL_EXT,
+  :min_peptide_length => 9,
 }
 
 opts = OptionParser.new do |op|
-  op.banner = "usage: #{File.basename(__FILE__)} <target> <decoy> [<target2> <decoy2> ...]"
+  op.banner = "usage: #{File.basename(__FILE__)} <target> <decoy> [... (as pairs)]"
+  op.separator "or:    #{File.basename(__FILE__)} <target>.datp <target>.tab.txt [... (as pairs)]"
   op.separator "for each pair of files"
   op.separator "sorts the peptide hits by score and determines the precision at each hit"
   op.separator ""
@@ -30,8 +32,9 @@ opts = OptionParser.new do |op|
   op.separator "    data: (an array with the data values)"
   op.separator "headers:  <the headers of the hits>"
   op.separator ""
-  op.separator "headers guaranteed to have at least: filename, query_title, charge, sequenst, qvalue"
+  op.separator "headers guaranteed to have at least: filename, query_title, charge, sequence, qvalue"
   op.separator ""
+  op.on("-l", "--min-peptide-length <Int>", Integer, "min num aa's to accept (default: #{opt[:min_peptide_length]})") {|v| opt[:min_peptide_length] = v }
   op.on("--z-together", "combines all charge states for precision calc") {|v| opt[:z_together] = v }
   op.on("-o", "--outfile <name>", "write to specified file") {|v| opt[:outfile] = v }
   op.on("-g", "--group-together", "process all forwards together and all decoys together", "will output to opt[:outfile] unless -o given") {|v| opt[:group_together] = v }
@@ -69,21 +72,32 @@ else
   end
 end
 
-
-
 require 'ms/error_rate/qvalue/mascot'
+require 'ms/error_rate/qvalue/mascot/percolator'
 
+mascot_percolator = (File.extname(target_files.first) == '.datp')
+headers = Ms::ErrorRate::Qvalue::Mascot::MEMBERS.map(&:to_s)
 if opt[:group_together]
-  filenames = { 'target' => target_files, 'decoy' => decoy_files }
-  target_hits = Ms::ErrorRate::Qvalue::Mascot.qvalues(target_files, decoy_files, opt).sort_by(&:qvalue)
-  headers = Ms::ErrorRate::Qvalue::Mascot::MEMBERS.map(&:to_s)
   outfile = opt[:outfile]
+  if mascot_percolator
+    filenames = { 'target' => target_files, 'decoy' => decoy_files }
+    # in the case of mascot_percolator, the "target" files are .datp files and
+    # "decoy" files the .tab.txt files
+    target_hits = Ms::ErrorRate::Qvalue::Mascot::Percolator.qvalues( target_files, decoy_files, opt).sort_by(&:qvalue)
+  else
+    filenames = { 'target' => target_files, 'decoy' => decoy_files }
+    target_hits = Ms::ErrorRate::Qvalue::Mascot.qvalues(target_files, decoy_files, opt).sort_by(&:qvalue)
+  end
   print_out(outfile, filenames, headers, target_hits)
 else
   target_files.zip(decoy_files) do |target_file, decoy_file|
-    filenames = { 'target' => [target_file], 'decoy' => [decoy_file] }
-    target_hits = Ms::ErrorRate::Qvalue::Mascot.qvalues([target_file], [decoy_file], opt).sort_by(&:qvalue)
-    headers = Ms::ErrorRate::Qvalue::Mascot::MEMBERS.map(&:to_s)
+    if mascot_percolator
+      filenames = { 'datp' => [target_file], 'tab_txt' => [decoy_file] }
+      target_hits = Ms::ErrorRate::Qvalue::Mascot::Percolator.qvalues([target_file], [decoy_file], opt).sort_by(&:qvalue)
+    else
+      filenames = { 'target' => [target_file], 'decoy' => [decoy_file] }
+      target_hits = Ms::ErrorRate::Qvalue::Mascot.qvalues([target_file], [decoy_file], opt).sort_by(&:qvalue)
+    end
     base = target_file.chomp(File.extname(target_file))
     outfile = base + '.' + NORMAL_EXT
     print_out(outfile, filenames, headers, target_hits)

@@ -7,11 +7,10 @@ require 'ms/fasta'
 require 'ms/fasta/ipi'
 
 SET_RE = /Set\s+(.*)/i
-PRECISION_EXT = ".precision.yml"
-
+QVALUE_EXT = ".qval.yml"
 
 # returns [sets_to_paths_hash, sets_order]
-def sets_compare_to_paths(file, ext=PRECISION_EXT)
+  def sets_compare_to_paths(file, ext=QVALUE_EXT)
   dirname = File.dirname(File.expand_path(file))
   lines = IO.readlines(file).map {|v| v.chomp }.select {|v| v =~ /\w/}
   sets = {}
@@ -87,13 +86,12 @@ def minimal_protein_set(proteins_to_aaseqs)
   [prot_to_uniq_peps_hash, same_peptide_hits]
 end
 
-def cutoffs_to_floats(ar, fdr=false)
+def cutoffs_to_floats(ar)
   ar.map do |v|
     if v == 'nil' || v == '-'
       nil
     else
       answ = v.to_f
-      fdr ? 1.0 - answ : answ
     end
   end
 end
@@ -111,9 +109,9 @@ def stats_per_prot(prot_to_peps, seq_to_hits)
       all_hits = seq_to_hits[pep_seq]
       all.merge( all_hits )
       all_hits.each do |hit|
-        aaseq = hit.aaseq
+        aaseq = hit.sequence
         aaseqs.add( aaseq )
-        aaseqcharges.add( aaseq + hit.charge )
+        aaseqcharges.add( aaseq + '_' + hit.charge.to_s )
       end
       per_protein_hash[prot] = [aaseqs.size, aaseqcharges.size, all.size]
 
@@ -133,10 +131,10 @@ opts = OptionParser.new do |op|
   op.separator ""
   op.separator "INPUT: "
   op.separator "    each <file> referenced in sets_compare.txt should have a"
-  op.separator "    <file>.precision.yml file"
+  op.separator "    <file>.qval.yml file"
   op.separator ""
   op.separator "OPTIONS:"
-  op.on("-p", "--precision <0-1[,...]>", Array, "precision cutoff(s) ['-' for none]") {|v| opt[:cutoffs] = cutoffs_to_floats(v)}
+  op.on("-q", "--qvalue <0-1[,...]>", Array, "only take qvalues < given ['-' for no threshold]") {|v| opt[:cutoffs] = cutoffs_to_floats(v)}
   op.separator ""
   op.on("--proteins <fasta>,<pep-db>", Array, "path to fasta and peptide centric DB", "peptide_centric_db is in the format: ", "<PEPTIDE>: <ID>-<ID>-<ID>") {|v| opt[:proteins] = v }
   op.separator "FORMATS:"
@@ -156,7 +154,7 @@ opts.parse!
 if opt[:output_format]
   yaml = <<SKEL
 results: 
-- precision_cutoff: <Float>
+- qvalue_cutoff: <Float>
   sets: 
     <set_name>: 
       num_uniq_aaseqs: <Integer>
@@ -253,9 +251,7 @@ end
 
 opt[:cutoffs].each do |cutoff|
 
-  #results.reject {|hash| hash[:precision_cutoff] == cutoff } # clear out older results
-  
-  cutoff_results = {'precision_cutoff' => cutoff}
+  cutoff_results = {'qvalue_cutoff' => cutoff}
   results_sets_hash = {}
   cutoff_results['sets'] = results_sets_hash
   results['results'] << cutoff_results
@@ -280,8 +276,8 @@ opt[:cutoffs].each do |cutoff|
 
       passing_hits = 
         if cutoff
-          # assumes monotonic precision values!
-          (above, below) = hits.partition {|hit| hit.precision >= cutoff }
+          # assumes monotonic qvalues values!
+          (above, below) = hits.partition {|hit| hit.qvalue <= cutoff }
           above
         else
           hits
@@ -289,14 +285,13 @@ opt[:cutoffs].each do |cutoff|
       all_passing_hits.push(*passing_hits)
     end
 
-
     
     # create an index from aaseq to hits
     seq_to_hits = Hash.new {|h,k| h[k] = []}
     uniq_seqcharge = Set.new
     all_passing_hits.each do |hit|
-      seq_to_hits[hit.aaseq] << hit
-      uniq_seqcharge.add( hit.aaseq + hit.charge )
+      seq_to_hits[hit.sequence] << hit
+      uniq_seqcharge.add( hit.sequence + '_' + hit.charge.to_s )
     end
 
 

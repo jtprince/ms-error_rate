@@ -13,11 +13,19 @@ end
 
 module Ms::ErrorRate::Qvalue::Mascot
   MEMBERS = [:filename, :query_title, :charge, :sequence, :mowse, :qvalue]
-  MascotPeptideHit = Struct.new(*MEMBERS)
+  MascotPeptideHit = Struct.new(*MEMBERS) do 
+    # emits an array rather than a Struct object
+    def to_yaml(*args)
+      to_a.to_yaml(*args)
+    end
+  end
 
   module_function
   # returns an array of Structs of PeptideHit(:filename, :query_title, :charge, :sequence, :mowse, :qvalue)
+  # opts = 
+  #   :min_peptide_length => Integer
   def qvalues(target_files, decoy_files, opts={})
+    min_pep_len = opts[:min_peptide_length]
 
     # we only want the top hit per query title (which should ensure that we
     # get the top hit per scan)
@@ -42,6 +50,11 @@ module Ms::ErrorRate::Qvalue::Mascot
           else
             hits.sort_by(&:mowse).last
           end
+        # FILTER HERE:
+        # ONLY TAKE the BEST HIT IF it passes any filters
+        if min_pep_len
+          next unless best_hit.sequence.size >= min_pep_len
+        end
         final_hits << best_hit
       end
       final_hits
