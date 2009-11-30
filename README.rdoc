@@ -1,0 +1,53 @@
+= {ms-error_rate}[http://mspire.rubyforge.org/projects/ms-error_rate]
+
+An {Mspire}[http://mspire.rubyforge.org] library for calculating or dealing
+with error rates.  These may be from target-decoy searches, sample bias
+validation, or other sources.  
+
+== Examples
+
+=== Target-Decoy with Mascot
+
+Generate q-values (right now only with Mascot and MascotPercolator):
+
+    require 'ms/error_rate/qvalue'
+    target_hits = Ms::ErrorRate::Qvalue::Mascot.qvalues(target_files, decoy_files)
+    # target_hit is a PeptideHit Struct (:filename, :query_title, :charge, :sequence, :mowse, :qvalue)
+
+    # or on the commandline:
+    % qvalues.rb <target>.dat <decoy>.dat
+
+The same output can be produced from Mascot-Percolator output:
+
+    require 'ms/error_rate/qvalue'
+    target_hits = Ms::ErrorRate::Qvalue::Mascot::Percolator.qvalues(datp_files, tab_dot_text_files)
+    # or commandline:
+    % qvalues.rb <target>.datp <target>.tab.txt
+
+=== Sample Bias Validation
+
+Sample Bias Validation allows error rate determination based on expected biases in sample composition.  Here is an example using transmembrane sequence content.  We will assume a fasta file called `proteins.fasta`:
+
+    # create a peptide-centric database
+    fasta_to_peptide_centric_db.rb proteins.fasta  # defaults 2 missed cleavages, min aaseq 4
+       # generates a file: proteins.msd_clvg2.min_aaseq4.yml
+
+    # create a transmembrane sequence prediction file
+    fasta_to_phobius.rb proteins.fasta     # => generates proteins.phobius
+
+    generate_sbv_input_hashes.rb proteins.msd_clvg2.min_aaseq4.yml --tm proteins.phobius,1
+       # creates two files:
+       # proteins.msd_clvg2.min_aaseq4.tm_min1.by_aaseq.yml
+       # proteins.msd_clvg2.min_aaseq4.tm_min1.freq_by_length.yml
+
+    # cytosolic fraction (transmembrane sequences not expected):
+    error_rate qvalues.yml --fp-sbv proteins.msd_clvg2.min_aaseq4.tm_min1.by_aaseq.yml,\
+        proteins.msd_clvg2.min_aaseq4.tm_min1.freq_by_length.yml,0.05
+
+== Installation
+
+  gem install ms-error_rate
+
+== Copyright
+
+See LICENSE

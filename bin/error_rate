@@ -20,10 +20,14 @@ end
 raw_validator_args = []
 validator_names = []
 
-opts = OptionParser.new do |op|
-  op.banner = "usage: #{File.basename(__FILE__)} precision.yml ..."
+opt = {
+  :order_by => [:qvalue],
+}
 
-  op.on("--order-by <Array>", Array, "the keys to order on") {|v| opt[:order_by] = v.map {|v| v.to_sym } }
+opts = OptionParser.new do |op|
+  op.banner = "usage: #{File.basename(__FILE__)} qvalues.yml ..."
+
+  op.on("--order-by <Array>", Array, "the keys to order on (default: [qvalue])") {|v| opt[:order_by] = v.map {|v| v.to_sym } }
   op.on("--best-is-low <Array>", Array, "the keys where better score is lower") {|v| opt[:best_is_low] = v.map {|v| v.to_sym } }
 
   [true, false].each do |boolean|

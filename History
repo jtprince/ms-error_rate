@@ -1,9 +1,12 @@
+== 0.0.3 
 
-== 0.0.1 / 2009-08-25
-
-* initial work - borrowing basic structure from ms-sequest and using original mspire lib/validators work.
+* switching to ms-template-ish structure
 
 == 0.0.2 / 2009-10-14
 
 * basic validation with peptide and protein centric sample bias validation.
 * peptide centric database created that include methionine cleavage.
+
+== 0.0.1 / 2009-08-25
+
+* initial work - borrowing basic structure from ms-sequest and using original mspire lib/validators work.

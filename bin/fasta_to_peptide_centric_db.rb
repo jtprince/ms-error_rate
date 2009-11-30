@@ -25,7 +25,7 @@ opt = {
   :missed_cleavages => 2,
 }
 opts = OptionParser.new do |op|
-  op.banner = "usage: #{File.basename(__FILE__)} missed_cleavages <file>.fasta ..."
+  op.banner = "usage: #{File.basename(__FILE__)} <file>.fasta ..."
   op.separator "       returns <file>.msd_clvg<missed_cleavages>.min_aaseq<min_length>.yml"
   op.separator ""
   op.separator "    Initiator Methionines - by default, will generate two peptides"
