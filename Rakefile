@@ -1,133 +1,102 @@
+
+require 'rubygems'
 require 'rake'
+require 'jeweler'
 require 'rake/testtask'
-require 'rake/rdoctask'
-require 'rake/gempackagetask'
+require 'rcov/rcovtask'
 
-NAME = 'ms-error_rate'
-EXTRA_RDOC_FILES = %w(README MIT-LICENSE History)
-LIB_FILES = Dir["lib/**/*.rb"]
-
-DIST_FILES =  LIB_FILES + EXTRA_RDOC_FILES
-
-require "lib/ms/error_rate/version"  # to get the Version #
-
-LEAVE_OUT = []
+NAME = "ms-error_rate"
+WEBSITE_BASE = "website"
+WEBSITE_OUTPUT = WEBSITE_BASE + "/output"
 
 gemspec = Gem::Specification.new do |s|
   s.name = NAME
-  s.version = Ms::ErrorRate::Version::VERSION
-  s.authors = ["John Prince"]
+  s.authors = ["John T. Prince"]
   s.email = "jtprince@gmail.com"
-  s.homepage = "http://mspire.rubyforge.org/projects/#{NAME}/"
-  s.platform = Gem::Platform::RUBY
-  s.summary = "An mspire library for determining error rates"
-  s.description = "decoy databases, sample bias validation, etc."
-  s.require_path = "lib"
-  s.rubyforge_project = "mspire"
-  s.has_rdoc = true
-  s.executables = Dir["bin/*"].map {|v| v.sub(/^bin\//,'') }
-  s.add_dependency("ms-core", ">= 0.0.1")
+  s.homepage = "http://jtprince.github.com/" + NAME
+  s.summary = "An mspire library for calculating error rates in MS/MS identifications (FDRs)."
+  s.description = "aids for creating and calculating error rates using target-decoy searches and sample validation."
+  s.rubyforge_project = 'mspire'
+  s.add_dependency("ms-core", ">= 0.0.2")
   s.add_dependency("ms-fasta", ">= 0.2.3")
-  #s.add_dependency("tap", ">= 0.12.4")
-  #s.add_dependency("tap-mechanize", ">= 0.5.1")
-  #s.add_dependency("external", ">= 0.3.0")
-  #s.add_dependency("ms-in_silico", ">= 0.2.3")
-  s.rdoc_options.concat %W{--main README -S -N --title Ms-ErrorRate}
-  
-  # list extra rdoc files like README here.
-  s.extra_rdoc_files = EXTRA_RDOC_FILES
-  s.files = DIST_FILES - LEAVE_OUT
+  # s.add_development_dependency("ms-testdata", ">= 0.18.0")
+  s.add_development_dependency("spec-more")
+  s.files << "VERSION"
 end
 
-desc "the files going to be in the gem"
-task :files do
-  puts "FILES in GEM:"
-  puts "  " + gemspec.files.join("\n")
+Jeweler::Tasks.new(gemspec)
+
+Rake::TestTask.new(:spec) do |spec|
+  spec.libs << 'lib' << 'spec'
+  spec.pattern = 'spec/**/*_spec.rb'
+  spec.verbose = true
 end
 
-Rake::GemPackageTask.new(gemspec) do |pkg|
-  pkg.need_tar = true
+Rcov::RcovTask.new do |spec|
+  spec.libs << 'spec'
+  spec.pattern = 'spec/**/*_spec.rb'
+  spec.verbose = true
 end
 
-desc 'Prints the gemspec manifest.'
-task :print_manifest do
-  # collect files from the gemspec, labeling 
-  # with true or false corresponding to the
-  # file existing or not
-  files = gemspec.files.inject({}) do |files, file|
-    files[File.expand_path(file)] = [File.exists?(file), file]
-    files
+
+def rdoc_redirect(base_rdoc_output_dir, package_website_page, version)
+  content = %Q{
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>mspire: } + NAME + %Q{rdoc</title>
+<meta http-equiv="REFRESH" content="0;url=#{package_website_page}/rdoc/#{version}/">
+</head> </html> 
+  }
+  FileUtils.mkpath(base_rdoc_output_dir)
+  File.open("#{base_rdoc_output_dir}/index.html", 'w') {|out| out.print content }
+end
+
+require 'rake/rdoctask'
+Rake::RDocTask.new do |rdoc|
+  base_rdoc_output_dir = WEBSITE_OUTPUT + '/rdoc'
+  version = File.read('VERSION')
+  rdoc.rdoc_dir = base_rdoc_output_dir + "/#{version}"
+  rdoc.title = NAME + ' ' + version
+  rdoc.rdoc_files.include('README*')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+end
+
+task :create_redirect do
+  base_rdoc_output_dir = WEBSITE_OUTPUT + '/rdoc'
+  rdoc_redirect(base_rdoc_output_dir, gemspec.homepage,version)
+end
+
+task :rdoc => :create_redirect
+
+namespace :website do
+  desc "checkout and configure the gh-pages submodule"
+  task :init do
+    if File.exist?(WEBSITE_OUTPUT + "/.git")
+      puts "!! not doing anything, #{WEBSITE_OUTPUT + "/.git"} already exists !!"
+    else
+
+      puts "(not sure why this won't work programmatically)"
+      puts "################################################"
+      puts "[Execute these commands]"
+      puts "################################################"
+      puts "git submodule init"
+      puts "git submodule update"
+      puts "pushd #{WEBSITE_OUTPUT}"
+      puts "git co --track -b gh-pages origin/gh-pages ;"
+      puts "popd"
+      puts "################################################"
+
+      # not sure why this won't work!
+      #%x{git submodule init}
+      #%x{git submodule update}
+      #Dir.chdir(WEBSITE_OUTPUT) do
+      #  %x{git co --track -b gh-pages origin/gh-pages ;}
+      #end
+    end
   end
-  
-  # gather non-rdoc/pkg files for the project
-  # and add to the files list if they are not
-  # included already (marking by the absence
-  # of a label)
-  Dir.glob("**/*").each do |file|
-    next if file =~ /^(rdoc|pkg|backup|config|submodule|spec)/ || File.directory?(file)
-    
-    path = File.expand_path(file)
-    files[path] = ["", file] unless files.has_key?(path)
-  end
-  
-  # sort and output the results
-  files.values.sort_by {|exists, file| file }.each do |entry| 
-    puts "%-5s %s" % entry
-  end
 end
 
-#
-# Documentation tasks
-#
-
-desc 'Generate documentation.'
-Rake::RDocTask.new(:rdoc) do |rdoc|
-  spec = gemspec
-  
-  rdoc.rdoc_dir = 'rdoc'
-  rdoc.rdoc_files.include( spec.extra_rdoc_files )
-  rdoc.rdoc_files.include( spec.files.select {|file| file =~ /^lib.*\.rb$/} )
-  
-  require 'cdoc'
-  rdoc.template = 'cdoc/cdoc_html_template' 
-  rdoc.options << '--fmt' << 'cdoc'
-end
-
-desc "Publish RDoc to RubyForge"
-task :publish_rdoc => [:rdoc] do
-  require 'yaml'
-  
-  config = YAML.load(File.read(File.expand_path("~/.rubyforge/user-config.yml")))
-  host = "#{config["username"]}@rubyforge.org"
-  
-  rsync_args = "-v -c -r"
-  remote_dir = "/var/www/gforge-projects/mspire/projects/ms-error_rate"
-  local_dir = "rdoc"
- 
-  sh %{rsync #{rsync_args} #{local_dir}/ #{host}:#{remote_dir}}
-end
-
-
-#
-# Test tasks
-#
-
-desc 'Default: Run specs.'
 task :default => :spec
 
-desc 'Run specs.'
-Rake::TestTask.new(:spec) do |t|
-  # can specify SPEC=<file>_spec.rb or TEST=<file>_spec.rb
-  ENV['TEST'] = ENV['SPEC'] if ENV['SPEC']  
-  t.libs = ['lib']
-  t.test_files = Dir.glob( File.join('spec', ENV['pattern'] || '**/*_spec.rb') )
-  #unless ENV['gems']
-    #t.libs << 'submodule/ms-testdata/lib'
-    #t.libs << 'submodule/ms-in_silico/lib'
-    #t.libs << 'submodule/tap-mechanize/lib'
-  #end
-  t.verbose = true
-  t.warning = true
-end
+task :build => :gemspec
 
-
+# credit: Rakefile modeled after Jeweler's
