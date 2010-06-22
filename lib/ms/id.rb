@@ -53,11 +53,10 @@ module Ms
             if expand_aa
               peptides = peptides.map do |pep|
                 if pep =~ letters_to_expand_re
-                    expand_peptides(pep, expand_aa)
-                  else
-                    nil
-                  end
-                end.compact
+                  expand_peptides(pep, expand_aa)
+                else
+                  pep
+                end
               end.flatten
             end
             fh.puts( prot.header.split(/\s+/).first + "\t" + peptides.join(" ") )
