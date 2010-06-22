@@ -23,6 +23,8 @@ end
 opt = {
   :min_length => 4,
   :missed_cleavages => 2,
+  :cleave_initiator_methionine => true,
+  :expand_x => true,
 }
 opts = OptionParser.new do |op|
   op.banner = "usage: #{File.basename(__FILE__)} <file>.fasta ..."
@@ -34,8 +36,8 @@ opts = OptionParser.new do |op|
   op.separator ""
   op.on("--missed-cleavages <Int>", Integer, "max num of missed cleavages (def: #{opt[:missed_cleavages]})") {|v| opt[:missed_cleavages] = v }
   op.on("--min-length <Int>", Integer, "the minimum peptide aaseq length (def: #{opt[:min_length]})") {|v| opt[:min_length] = v }
-  op.on("--no-cleaved-methionine", "does not cleave off initiator methionine") {|v| opt[:min_length] = v }
-  
+  op.on("--no-cleaved-methionine", "does not cleave off initiator methionine") { opt[:cleave_initiator_methionine] = false }
+  op.on("--no-expand-x", "don't enumerate aa 'X' possibilities") { opt[:expand_x] = false }
 end
 
 opts.parse!

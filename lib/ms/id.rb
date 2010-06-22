@@ -7,7 +7,10 @@ module Ms
     IPI_RE = /IPI:([\w\d\.]+)\|/
     GI_RE = /gi|([\w\d\.]+)\|/
 
-    DEFAULT_PEPTIDE_CENTRIC_DB = {:missed_cleavages => 1, :min_length => 8, :enzyme => Ms::InSilico::Digester::TRYPSIN, :id_regexp => nil, :remove_digestion_file => true, :also_cleave_initiator_methionine => true}
+    # the twenty standard amino acids
+    STANDARD_AA = %w(A C D E F G H I K L M N P Q R S T V W Y)
+
+    DEFAULT_PEPTIDE_CENTRIC_DB = {:missed_cleavages => 1, :min_length => 8, :enzyme => Ms::InSilico::Digester::TRYPSIN, :id_regexp => nil, :remove_digestion_file => true, :cleave_initiator_methionine => true, :expand_aa => {'X' => STANDARD_AA}}
 
     # writes a new file with the added 'min_aaseq<Integer>'
     # creates a temporary digestion file that contains all peptides digesting
@@ -16,7 +19,7 @@ module Ms
     def self.peptide_centric_db(fasta_file, opts={})
       opts = DEFAULT_PEPTIDE_CENTRIC_DB.merge(opts)
 
-      (missed_cleavages, min_length, enzyme, id_regexp, remove_digestion_file, also_cleave_initiator_methionine) = opts.values_at(:missed_cleavages, :min_length, :enzyme, :id_regexp, :remove_digestion_file, :also_cleave_initiator_methionine) 
+      (missed_cleavages, min_length, enzyme, id_regexp, remove_digestion_file, cleave_initiator_methionine, expand_aa) = opts.values_at(:missed_cleavages, :min_length, :enzyme, :id_regexp, :remove_digestion_file, :cleave_initiator_methionine, :expand_aa) 
 
       unless id_regexp
         id_regexp = Ms::Fasta.id_regexp(Ms::Fasta.filetype(fasta_file))
@@ -26,14 +29,17 @@ module Ms
       start_time = Time.now
       print "Digesting #{fasta_file} ..." if $VERBOSE
 
+      if expand_aa
+        letters_to_expand_re = Regexp.new("[" << Regexp.escape(expand_aa.keys.join) << "]")
+      end
+
       base = fasta_file.chomp(File.extname(fasta_file))
       digestion_file = base + ".msd_clvg#{missed_cleavages}.peptides"
       File.open(digestion_file, "w") do |fh|
         Ms::Fasta.open(fasta_file) do |fasta|
           fasta.each do |prot|
             peptides = enzyme.digest(prot.sequence, missed_cleavages)
-            begin_peptides_TEST = peptides.map
-            if (also_cleave_initiator_methionine && (prot.sequence[0,1] == "M"))
+            if (cleave_initiator_methionine && (prot.sequence[0,1] == "M"))
               m_peps = []
               init_methionine_peps = []
               peptides.each do |pep|
@@ -43,6 +49,16 @@ module Ms
                 end
               end
               peptides.push(*m_peps)
+            end
+            if expand_aa
+              peptides = peptides.map do |pep|
+                if pep =~ letters_to_expand_re
+                    expand_peptides(pep, expand_aa)
+                  else
+                    nil
+                  end
+                end.compact
+              end.flatten
             end
             fh.puts( prot.header.split(/\s+/).first + "\t" + peptides.join(" ") )
           end
@@ -83,6 +99,27 @@ module Ms
         File.unlink(digestion_file)
       end
 
+    end
+
+    # does combinatorial expansion of all letters requesting it.
+    # expand_aa is hash like: {'X'=>STANDARD_AA}
+    def self.expand_peptides(peptide, expand_aa)
+      letters_in_order = expand_aa.keys.sort
+      index_and_key = []
+      peptide.split('').each_with_index do |char,i| 
+        if let_index = letters_in_order.index(char) 
+          index_and_key << [i, letters_in_order[let_index]]
+        end
+      end
+      to_expand = [peptide]
+      index_and_key.each do |i,letter|
+        new_peps = []
+        while current_pep = to_expand.shift do
+          new_peps << expand_aa[letter].map {|v| dp = current_pep.dup ; dp[i] = v ; dp }
+        end
+        to_expand = new_peps.flatten
+      end
+      to_expand
     end
 
   end
