@@ -23,9 +23,9 @@ module Ms
         opts = OptionParser.new do |op|
           op.banner = "usage: #{File.basename($0)} <file>.fasta ..."
           op.separator "output: "
-          op.separator "    <file>.msd_clvg<missed_cleavages>.min_aaseq<min_length>.tsv"
+          op.separator "    <file>.msd_clvg<missed_cleavages>.min_aaseq<min_length>.yml"
           op.separator "format:"
-          op.separator "    PEPTIDE<tab>ID1<tab>ID2<tab>ID3..."
+          op.separator "    PEPTIDE: ID1<tab>ID2<tab>ID3..."
           op.separator ""    
           op.separator "    Initiator Methionines - by default, will generate two peptides"
           op.separator "    for any peptide found at the N-termini starting with 'M'"
@@ -123,14 +123,14 @@ module Ms
         puts "#{Time.now - start_time} sec" if $VERBOSE
 
         base = digestion_file.chomp(File.extname(digestion_file))
-        final_outfile = base + ".min_aaseq#{min_length}" + ".tsv"
+        final_outfile = base + ".min_aaseq#{min_length}" + ".yml"
 
         start_time = Time.now
         print "Writing results to #{} ..." if $VERBOSE
 
         File.open(final_outfile, 'w') do |out|
           hash.each do |k,v|
-            out.puts( [k, *v].join("\t") )
+            out.puts( [k, v.join("\t")].join(": ") )
           end
         end
         puts "#{Time.now - start_time} sec" if $VERBOSE
