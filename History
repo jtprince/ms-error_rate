@@ -1,3 +1,7 @@
+== 0.0.6
+
+* changed peptide centric db output to full YAML (i.e., the protein IDs are in an inline array)
+
 == 0.0.3 
 
 * switching to ms-template-ish structure
