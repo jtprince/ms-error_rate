@@ -43,13 +43,15 @@ describe 'creating a peptide centric database' do
   before do
     @fasta_file = [TESTFILES, path, 'uni_11_sp_tr.fasta'].join('/')
     #@output_file = [TESTFILES, path, 'uni_11_sp_tr.'].join('/')
-    @output_file = [TESTFILES, path, "uni_11_sp_tr.msd_clvg2.min_aaseq4.yml"].join('/')
+    @output_file = [TESTFILES, path, "uni_11_sp_tr.msd_clvg2.min_aaseq4.tsv"].join('/')
   end
 
   it 'converts a fasta file into peptide centric db' do
     Ms::Id::Peptidedb.cmdline([@fasta_file])
     ok File.exist?(@output_file)
-    sorted = YAML.load_file(@output_file).sort
+    hash = {}
+    IO.readlines(@output_file).each {|line| (pep, *prot_ids) = line.chomp.split("\t") ; hash[pep] = prot_ids }
+    sorted = hash.sort
     # these are merely frozen, not perfectly defined
     sorted.first.is ["AAFDDAIAELDTLSEESYK", ["P62258"]]
     sorted.last.is ["YWCRLGPPRWICQTIVSTNQYTHHR", ["D2KTA8"]]
