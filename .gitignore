@@ -6,3 +6,4 @@ config/
 data/
 *.swp
 *.gemspec
+spec/testfiles/ms/id/peptidedb/uni_11_sp_tr.index
