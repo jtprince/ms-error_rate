@@ -2,6 +2,6 @@
 
 require 'rubygems'
 require 'optparse'
-require 'ms/id/peptidedb'
+require 'ms/ident/peptidedb'
 
-Ms::Id::Peptidedb.cmdline(ARGV)
+Ms::Ident::Peptidedb.cmdline(ARGV)

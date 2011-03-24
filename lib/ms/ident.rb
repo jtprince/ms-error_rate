@@ -2,7 +2,7 @@ require 'ms/fasta'
 require 'ms/in_silico/digester'
 
 module Ms
-  module Id
+  module Ident
 
     IPI_RE = /IPI:([\w\d\.]+)\|/
     GI_RE = /gi|([\w\d\.]+)\|/

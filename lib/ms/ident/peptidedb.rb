@@ -1,10 +1,8 @@
 require 'ms/fasta'
 require 'ms/in_silico/digester'
 
-
-
 module Ms
-  module Id
+  module Ident
 
     class Peptidedb
       MAX_NUM_AA_EXPANSION = 3
@@ -49,7 +47,7 @@ module Ms
         end
 
         argv.each do |file|
-          Ms::Id::Peptidedb.peptide_centric_db(file, opt)
+          Ms::Ident::Peptidedb.peptide_centric_db(file, opt)
         end
       end
 
@@ -61,12 +59,6 @@ module Ms
         opts = DEFAULT_PEPTIDE_CENTRIC_DB.merge(opts)
 
         (missed_cleavages, min_length, enzyme, id_regexp, remove_digestion_file, cleave_initiator_methionine, expand_aa) = opts.values_at(:missed_cleavages, :min_length, :enzyme, :id_regexp, :remove_digestion_file, :cleave_initiator_methionine, :expand_aa) 
-
-        unless id_regexp
-          id_regexp = Ms::Fasta.id_regexp(Ms::Fasta.filetype(fasta_file))
-          raise RuntimeError, "fasta file type not recognized, supply id_regexp" unless id_regexp
-        end
-
         start_time = Time.now
         print "Digesting #{fasta_file} ..." if $VERBOSE
 
@@ -113,10 +105,10 @@ module Ms
         hash = Hash.new {|h,k| h[k] = [] }
         IO.foreach(digestion_file) do |line|
           (prot, *peps) = line.chomp!.split(/\s+/)
-          id = prot.match(id_regexp)[1]
+          # prot is something like this: "sp|P31946|1433B_HUMAN" in uniprot 
           peps.each do |pep|
             if pep.size >= min_length
-              hash[pep] << id
+              hash[pep] << prot
             end
           end
         end
