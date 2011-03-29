@@ -25,7 +25,12 @@ $VERBOSE = opt.delete(:verbose)
 
 files = ARGV.to_a
 files.each_slice(2).map do |target, decoy|
-  outfile = Ms::ErrorRate::Qvalue::Pepxml.to_phq(target, decoy, opt, &:ionscore)
+  hit_qvalue_pairs = Ms::ErrorRate::Qvalue::Pepxml.target_decoy_qvalues(target, decoy, opt, &:ionscore)
+  hits = [] ; qvals = []
+  hit_qvalue_pairs.each do |hit, qval|
+    hits << hit ; qvals << qval
+  end
+  outfile = Ms::Ident::PeptideHit::Qvalue.to_phq(target.chomp(File.ext(target)), hits, qvals)
   puts "created: #{outfile}" if $VERBOSE
 end
 

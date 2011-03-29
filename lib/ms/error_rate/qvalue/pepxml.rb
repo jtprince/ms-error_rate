@@ -5,17 +5,14 @@ module Ms::ErrorRate ; end
 module Ms::ErrorRate::Qvalue ; end
 
 module Ms::ErrorRate::Qvalue::Pepxml
-  DELIMITER = "\t"
-  PeptideHit = Struct.new(:aaseq, :charge, :ionscore, :qvalue)
-
   module_function
 
-  # writes a phq.tsv file based on the target's basename
+  # returns an array of hit and qvalue pairs
   # retrieves the aaseq, charge, and all search_score keys and values for use
   # in the search_hit.  caller must provide a sort_by block, where the best
   # hits are last.  charge is an integer, and all other search scores are cast
   # as floats.  returns the output filename.
-  def to_phq(target_pepxml, decoy_pepxml, opt={}, &sort_by)
+  def target_decoy_qvalues(target_pepxml, decoy_pepxml, opt={}, &sort_by)
 
     # this is a list of high quality peptide hits associated with each group
     fields = [:aaseq, :charge]
@@ -45,18 +42,11 @@ module Ms::ErrorRate::Qvalue::Pepxml
     end
 
     fields.push(*ss_names)
+
     peptide_hit_class = Struct.new(*fields)
     (t_hits, d_hits) = [target_hits, decoy_hits].map {|hits| hits.map {|hit_values| peptide_hit_class.new(*hit_values) } }
 
-    hit_qvalue_pairs = Ms::ErrorRate::Qvalue.target_decoy_qvalues(t_hits, d_hits, :z_together => opt[:z_together], &sort_by)
-
-    newfile = target_pepxml.chomp(File.extname(target_pepxml)) + ".phq.tsv"
-    File.open(newfile,'w') do |out| 
-      out.puts %w(aaseq charge qvalue).join(DELIMITER)
-      hit_qvalue_pairs.each do |hit, qvalue|
-        out.puts [hit.aaseq, hit.charge, qvalue].join(DELIMITER)
-      end
-    end
-    newfile
+    # hit and qvalue pairs
+    Ms::ErrorRate::Qvalue.target_decoy_qvalues(t_hits, d_hits, :z_together => opt[:z_together], &sort_by)
   end
 end
