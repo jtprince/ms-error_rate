@@ -4,6 +4,7 @@ require 'trollop'
 require 'nokogiri'
 require 'set'
 
+require 'ms/ident/peptide_hit/qvalue'
 require 'ms/error_rate/qvalue/pepxml'
 
 opts = Trollop::Parser.new do
@@ -30,7 +31,7 @@ files.each_slice(2).map do |target, decoy|
   hit_qvalue_pairs.each do |hit, qval|
     hits << hit ; qvals << qval
   end
-  outfile = Ms::Ident::PeptideHit::Qvalue.to_phq(target.chomp(File.ext(target)), hits, qvals)
+  outfile = Ms::Ident::PeptideHit::Qvalue.to_phq(target.chomp(File.extname(target)), hits, qvals)
   puts "created: #{outfile}" if $VERBOSE
 end
 
