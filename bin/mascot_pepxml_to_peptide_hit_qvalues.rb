@@ -32,7 +32,7 @@ $VERBOSE = opt.delete(:verbose)
 
 files = ARGV.to_a
 
-files.each_slice(2).map!(&:reverse) if opt[:decoy_first]
+(files=files.each_slice(2).map(&:reverse).flatten) if opt[:decoy_first]
 
 groups_of_search_hits = files.map do |file|
   Ms::Ident::Pepxml.search_hits(file)
