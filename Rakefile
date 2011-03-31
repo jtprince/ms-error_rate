@@ -1,102 +1,52 @@
 
 require 'rubygems'
 require 'rake'
+
 require 'jeweler'
-require 'rake/testtask'
-require 'rcov/rcovtask'
-
-NAME = "ms-error_rate"
-WEBSITE_BASE = "website"
-WEBSITE_OUTPUT = WEBSITE_BASE + "/output"
-
-gemspec = Gem::Specification.new do |s|
-  s.name = NAME
-  s.authors = ["John T. Prince"]
-  s.email = "jtprince@gmail.com"
-  s.homepage = "http://jtprince.github.com/" + NAME
-  s.summary = "An mspire library for calculating error rates in MS/MS identifications (FDRs)."
-  s.description = "aids for creating and calculating error rates using target-decoy searches and sample validation."
-  s.rubyforge_project = 'mspire'
-  s.add_dependency("ms-core", ">= 0.0.2")
-  s.add_dependency("ms-fasta", ">= 0.2.3")
-  # s.add_development_dependency("ms-testdata", ">= 0.18.0")
-  s.add_development_dependency("spec-more")
-  s.files << "VERSION"
+Jeweler::Tasks.new do |gem|
+  # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
+  gem.name = "ms-error_rate"
+  gem.homepage = "http://github.com/jtprince/ms-error_rate"
+  gem.license = "MIT"
+  gem.summary = %Q{An mspire library for calculating error rates in MS/MS identifications (FDRs).}
+  gem.description = %Q{aids for creating and calculating error rates using target-decoy searches and sample validation.}
+  gem.email = "jtprince@gmail.com"
+  gem.authors = ["John Prince"]
+  # Include your dependencies below. Runtime dependencies are required when using your gem,
+  # and development dependencies are only needed for development (ie running rake tasks, tests, etc)
+  #  gem.add_runtime_dependency 'jabber4r', '> 0.1'
+  #  gem.add_development_dependency 'rspec', '> 1.2.3'
+  gem.rubyforge_project = 'mspire'
+  gem.add_runtime_dependency("ms-core", ">= 0.0.2")
+  gem.add_runtime_dependency("ms-ident", ">= 0.0.20")
+  gem.add_development_dependency "spec-more", ">= 0"
+  gem.add_development_dependency "jeweler", "~> 1.5.2"
+  gem.add_development_dependency "rcov", ">= 0"
 end
+Jeweler::RubygemsDotOrgTasks.new
 
-Jeweler::Tasks.new(gemspec)
-
+require 'rake/testtask'
 Rake::TestTask.new(:spec) do |spec|
   spec.libs << 'lib' << 'spec'
   spec.pattern = 'spec/**/*_spec.rb'
   spec.verbose = true
 end
 
-Rcov::RcovTask.new do |spec|
-  spec.libs << 'spec'
-  spec.pattern = 'spec/**/*_spec.rb'
-  spec.verbose = true
-end
-
-
-def rdoc_redirect(base_rdoc_output_dir, package_website_page, version)
-  content = %Q{
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>mspire: } + NAME + %Q{rdoc</title>
-<meta http-equiv="REFRESH" content="0;url=#{package_website_page}/rdoc/#{version}/">
-</head> </html> 
-  }
-  FileUtils.mkpath(base_rdoc_output_dir)
-  File.open("#{base_rdoc_output_dir}/index.html", 'w') {|out| out.print content }
-end
-
-require 'rake/rdoctask'
-Rake::RDocTask.new do |rdoc|
-  base_rdoc_output_dir = WEBSITE_OUTPUT + '/rdoc'
-  version = File.read('VERSION')
-  rdoc.rdoc_dir = base_rdoc_output_dir + "/#{version}"
-  rdoc.title = NAME + ' ' + version
-  rdoc.rdoc_files.include('README*')
-  rdoc.rdoc_files.include('lib/**/*.rb')
-end
-
-task :create_redirect do
-  base_rdoc_output_dir = WEBSITE_OUTPUT + '/rdoc'
-  rdoc_redirect(base_rdoc_output_dir, gemspec.homepage,version)
-end
-
-task :rdoc => :create_redirect
-
-namespace :website do
-  desc "checkout and configure the gh-pages submodule"
-  task :init do
-    if File.exist?(WEBSITE_OUTPUT + "/.git")
-      puts "!! not doing anything, #{WEBSITE_OUTPUT + "/.git"} already exists !!"
-    else
-
-      puts "(not sure why this won't work programmatically)"
-      puts "################################################"
-      puts "[Execute these commands]"
-      puts "################################################"
-      puts "git submodule init"
-      puts "git submodule update"
-      puts "pushd #{WEBSITE_OUTPUT}"
-      puts "git co --track -b gh-pages origin/gh-pages ;"
-      puts "popd"
-      puts "################################################"
-
-      # not sure why this won't work!
-      #%x{git submodule init}
-      #%x{git submodule update}
-      #Dir.chdir(WEBSITE_OUTPUT) do
-      #  %x{git co --track -b gh-pages origin/gh-pages ;}
-      #end
-    end
-  end
-end
+#require 'rcov/rcovtask'
+#Rcov::RcovTask.new do |spec|
+#  spec.libs << 'spec'
+#  spec.pattern = 'spec/**/*_spec.rb'
+#  spec.verbose = true
+#end
 
 task :default => :spec
 
-task :build => :gemspec
+require 'rake/rdoctask'
+Rake::RDocTask.new do |rdoc|
+  version = File.exist?('VERSION') ? File.read('VERSION') : ""
 
-# credit: Rakefile modeled after Jeweler's
+  rdoc.rdoc_dir = 'rdoc'
+  rdoc.title = "ms-error_rate #{version}"
+  rdoc.rdoc_files.include('README*')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+end
