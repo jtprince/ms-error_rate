@@ -2,7 +2,6 @@
 require 'set'
 require 'ms/error_rate/decoy'
 
-
 class Array
   def group_by(&block)
     hash = Hash.new {|h,k| h[k] = [] }
