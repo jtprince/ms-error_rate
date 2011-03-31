@@ -7,12 +7,15 @@ require 'set'
 require 'ms/ident/peptide_hit/qvalue'
 require 'ms/error_rate/qvalue/pepxml'
 
+combine_file = "combined.phq.tsv"
 opts = Trollop::Parser.new do
-  banner %Q{usage: #{File.basename(__FILE__)} <fwd>.xml <decoy>.xml ...
-outputs: <fwd>.phq.csv
+  banner %Q{usage: #{File.basename(__FILE__)} <target>.xml <decoy>.xml ...
+outputs: <fwd>.phq.tsv
 phq.tsv?: see schema/peptide_hit_qvalues.phq.tsv
 }
   opt :z_together, "do not group by charge state", :default => false
+  opt :decoy_first, "decoy files are before target files", :default => false
+  opt :combine, "groups target and decoy hits together from all files, writing to #{combine_file}", :default => false
   opt :verbose, "be verbose", :default => false
 end
 
